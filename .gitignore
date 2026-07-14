@@ -1,0 +1,12 @@
+# Python junk
+__pycache__/
+*.pyc
+.env
+varmenv/
+
+# Next.js / Node junk
+node_modules/
+.next/
+out/
+build/
+.DS_Store
