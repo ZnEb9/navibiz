@@ -66,24 +66,21 @@ export default function MapComponent({
   const triggerRouteCalculation = (start, end) => {
     setLoadingRoute(true);
     
-    fetch("https://navibiz-x6xv.vercel.app/api/route", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        start_lat: start.lat,
-        start_lon: start.lng,
-        end_lat: end.lat,
-        end_lon: end.lng
-      })
+    // 1. KIRIM SEBAGAI QUERY PARAMETERS (Bukan JSON Body)
+    const url = `https://navibiz-x6xv.vercel.app/api/route?start_lat=${start.lat}&start_lon=${start.lng}&end_lat=${end.lat}&end_lon=${end.lng}`;
+
+    fetch(url, {
+      method: "POST", // Tetap POST sesuai endpoint
     })
       .then((res) => res.json())
       .then((resData) => {
-        // Asumsi backend mengembalikan array koordinat: [[lat, lon], [lat, lon], ...] atau struktur GeoJSON
-        if (resData.status === "success" && resData.polyline) {
-          setRoutePolyline(resData.polyline);
-        } else if (Array.isArray(resData)) {
-          // Fallback jika backend langsung mengembalikan list array koordinat mentah
-          setRoutePolyline(resData);
+        if (resData.status === "success" && resData.geometry) {
+          // 2. BACKEND MENGIRIM [lon, lat], LEAFLET PERLU [lat, lon]
+          // Kita harus membalik (swap) koordinatnya di sini
+          const formattedRoute = resData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+          setRoutePolyline(formattedRoute);
+        } else {
+          console.error("Data rute tidak sesuai format:", resData);
         }
         setLoadingRoute(false);
       })

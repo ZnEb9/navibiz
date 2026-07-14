@@ -25,16 +25,23 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 # =====================================================================
-# LOAD GRAPH JALAN UNTUK ROUTING (Dialihkan dari pgRouting ke Backend)
+# LOAD GRAPH JALAN UNTUK ROUTING (Membaca File Lokal untuk Vercel)
 # =====================================================================
-print("Loading jaringan jalan Jakarta Barat ke memori server...")
-# Mengunduh graf jalan raya Jakarta Barat sekali saat server pertama kali menyala
-try:
-    G = ox.graph_from_place("Jakarta Barat, Indonesia", network_type="drive")
-    # Mengoptimalkan graf untuk pencarian rute terpendek (Dijkstra)
-    G = ox.utils_graph.get_largest_component(G, strongly=True)
-except Exception as e:
-    print(f"Gagal memuat graf jalan OSM: {e}")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+GRAPH_PATH = os.path.join(BASE_DIR, "jakarta_barat.graphml")
+
+G = None
+
+# Membaca file lokal yang jauh lebih cepat dan aman dari timeout Vercel
+if os.path.exists(GRAPH_PATH):
+    try:
+        print("Loading jaringan jalan Jakarta Barat dari file lokal...")
+        G = ox.load_graphml(GRAPH_PATH)
+    except Exception as e:
+        print(f"Gagal memuat graf jalan dari file lokal: {e}")
+        G = None
+else:
+    print("Peringatan: Berkas jakarta_barat.graphml tidak ditemukan di folder api/")
     G = None
 
 # =====================================================================
