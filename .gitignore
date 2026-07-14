@@ -10,3 +10,7 @@ node_modules/
 out/
 build/
 .DS_Store
+
+.venv/
+venv/
+env/
