@@ -18,7 +18,7 @@ export default function MapComponent() {
 
   // 1. Ambil data 1.222 UMKM dari Backend Vercel secara otomatis
   useEffect(() => {
-    fetch("/api/umkm")
+    fetch("https://navibiz-x6xv.vercel.app/api/umkm")
       .then((res) => res.json())
       .then((resData) => {
         if (resData.status === "success") {
