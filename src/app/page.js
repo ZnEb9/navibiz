@@ -31,6 +31,9 @@ export default function HomePage() {
   const [routePolyline, setRoutePolyline] = useState([]); // Jalur koordinat rute
   const [loadingRoute, setLoadingRoute] = useState(false);
 
+  // State Baru untuk Kontrol Buka-Tutup Menu di HP
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const colors = {
     tealPrimary: "#004c54",
     orangeAccent: "#f58220",
@@ -49,17 +52,96 @@ export default function HomePage() {
     setEndCoords(null);
     setRoutePolyline([]);
     setTargetUmkmName("");
+    
+    // Otomatis tutup sidebar setelah memilih menu di HP agar peta langsung terlihat
+    setIsSidebarOpen(false);
   };
 
   return (
-    <main style={{ fontFamily: "'Segoe UI', Roboto, sans-serif", height: "100vh", display: "flex", overflow: "hidden", margin: 0 }}>
+    <main className="navibiz-main-container" style={{ fontFamily: "'Segoe UI', Roboto, sans-serif", height: "100vh", display: "flex", overflow: "hidden", margin: 0, position: "relative", width: "100vw" }}>
       
-      {/* SIDEBAR KONTROL (SISI KIRI - 30%) */}
-      <section style={{ width: "30%", minWidth: "360px", backgroundColor: "#ffffff", boxShadow: "4px 0 24px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", zIndex: 10 }}>
+      {/* INJEKSI CSS RESPONSIF SECARA AMAN TANPA MERUSAK KODE INLINE */}
+      <style>{`
+        .navibiz-hamburger { display: none; }
+        .navibiz-overlay { display: none; }
+        
+        @media (max-width: 768px) {
+          .navibiz-sidebar-section {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 320px !important;
+            min-width: 320px !important;
+            height: 100vh !important;
+            transform: ${isSidebarOpen ? "translateX(0)" : "translateX(-100%)"} !important;
+            z-index: 9999 !important;
+            transition: transform 0.3s ease-in-out !important;
+          }
+          .navibiz-hamburger {
+            display: flex !important;
+          }
+          .navibiz-overlay {
+            display: ${isSidebarOpen ? "block" : "none"} !important;
+          }
+          .navibiz-map-section {
+            width: 100vw !important;
+            height: 100vh !important;
+          }
+        }
+      `}</style>
+
+      {/* 1. TOMBOL TOGGLE DRAWER (Hanya Muncul di Layar HP) */}
+      <button 
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="navibiz-hamburger"
+        style={{
+          position: "fixed",
+          top: "16px",
+          left: "16px",
+          zIndex: 10000,
+          backgroundColor: colors.tealPrimary,
+          color: "#ffffff",
+          border: `2px solid ${colors.orangeAccent}`,
+          borderRadius: "8px",
+          width: "44px",
+          height: "44px",
+          cursor: "pointer",
+          justifyContent: "center",
+          alignItems: "center",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+          fontSize: "20px",
+          fontWeight: "bold",
+          transition: "transform 0.2s ease"
+        }}
+        aria-label="Toggle Menu"
+      >
+        {isSidebarOpen ? "✕" : "☰"}
+      </button>
+
+      {/* 2. LAYER LAYANG GELAP (OVERLAY BACKGROUND COAT) */}
+      <div 
+        className="navibiz-overlay"
+        onClick={() => setIsSidebarOpen(false)}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(4px)",
+          zIndex: 9998
+        }}
+      />
+      
+      {/* 3. SIDEBAR KONTROL (SISI KIRI - RESPONSIVE DRAWER) */}
+      <section className="navibiz-sidebar-section" style={{ width: "30%", minWidth: "360px", backgroundColor: "#ffffff", boxShadow: "4px 0 24px rgba(0,0,0,0.05)", display: "flex", flexDirection: "column", zIndex: 10 }}>
         
         {/* Header Branding */}
-        <div style={{ padding: "16px 24px", backgroundColor: colors.tealPrimary, color: "#ffffff", display: "flex", alignItems: "center", gap: "16px", borderBottom: `4px solid ${colors.orangeAccent}` }}>
-          <div style={{ backgroundColor: "#ffffff", padding: "6px 8px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}>
+        <div style={{ padding: "16px 24px", backgroundColor: colors.tealPrimary, color: "#ffffff", display: "flex", alignItems: "center", gap: "16px", borderBottom: `4px solid ${colors.orangeAccent}`, paddingTop: "20px" }}>
+          {/* Pembatas jarak kiri tambahan khusus di HP agar logo tidak menabrak tombol silang */}
+          <div className="navibiz-brand-wrapper" style={{ display: "flex", alignItems: "center", gap: "16px", marginLeft: "40px" }} />
+          <div style={{ className: "navibiz-logo-box", backgroundColor: "#ffffff", padding: "6px 8px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}>
             <img src="/logo.png" alt="Logo NaviBiz" style={{ height: "46px", width: "auto", objectFit: "contain" }} />
           </div>
           <div>
@@ -130,7 +212,7 @@ export default function HomePage() {
               </div>
 
               {/* Status Panel Koordinat */}
-              <div style={{ background: colors.bgLight, padding: "14px", borderRadius: "6px", border: `1px solid ${colors.borderLight}`, fontSize: "13px", display: "flex", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+              <div style={{ background: colors.bgLight, padding: "14px", borderRadius: "6px", border: `1px solid ${colors.borderLight}`, fontSize: "13px", display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
                 <div>🟢 <strong>Posisi Kamu:</strong> {startCoords ? <span style={{ color: "#16a34a", fontWeight: "600" }}>📍 Tersedia ({startCoords.lat.toFixed(4)}, {startCoords.lng.toFixed(4)})</span> : <span style={{ color: "#64748b" }}>(Klik area peta untuk menetapkan)</span>}</div>
                 <div>🔴 <strong>UMKM Tujuan:</strong> {endCoords ? <span style={{ color: "#ef4444", fontWeight: "600" }}>🏢 {targetUmkmName}</span> : <span style={{ color: "#64748b" }}>(Klik marker UMKM di peta)</span>}</div>
               </div>
@@ -151,8 +233,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* OPER SELURUH PROPS NAVIGASI KE MAP */}
-      <section style={{ flex: 1, height: "100vh", position: "relative" }}>
+      {/* 4. WADAH UTAMA PETA (MAP VIEW CONTAINER) */}
+      <section className="navibiz-map-section" style={{ flex: 1, height: "100vh", position: "relative", zIndex: 1 }}>
         <MapComponent 
           selectedCategory={selectedCategory} 
           activeTab={activeTab}
