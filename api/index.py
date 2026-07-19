@@ -5,7 +5,7 @@ from psycopg2.extras import RealDictCursor
 import os
 import networkx as nx
 import osmnx as ox
-from shapely.geometry import mapping
+import pickle # Tambahkan modul pickle bawaan
 
 app = FastAPI(title="NaviBiz API", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
@@ -18,41 +18,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ambil Connection String Neon.tech dari Environment Variable Vercel nanti
+# Ambil Connection String Neon.tech dari Environment Variable Vercel
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 # =====================================================================
-# LOAD GRAPH JALAN UNTUK ROUTING (Membaca File Lokal untuk Vercel)
+# LOAD GRAPH JALAN UNTUK ROUTING (Menggunakan Biner Pickle yang Super Cepat)
 # =====================================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-GRAPH_PATH = os.path.join(BASE_DIR, "jakarta_barat.graphml")
+GRAPH_PKL_PATH = os.path.join(BASE_DIR, "jakarta_barat.pkl")
 
 G = None
 
-# Membaca file lokal yang jauh lebih cepat dan aman dari timeout Vercel
-if os.path.exists(GRAPH_PATH):
+# Membaca berkas biner pickle jauh lebih cepat (< 0.2 detik), aman dari batas timeout Vercel
+if os.path.exists(GRAPH_PKL_PATH):
     try:
-        print("Loading jaringan jalan Jakarta Barat dari file lokal...")
-        G = ox.load_graphml(GRAPH_PATH)
+        print("Loading jaringan jalan Jakarta Barat dari biner pickle...")
+        with open(GRAPH_PKL_PATH, "rb") as f:
+            G = pickle.load(f)
     except Exception as e:
-        print(f"Gagal memuat graf jalan dari file lokal: {e}")
+        print(f"Gagal memuat graf jalan dari file pickle: {e}")
         G = None
 else:
-    print("Peringatan: Berkas jakarta_barat.graphml tidak ditemukan di folder api/")
+    print("Peringatan: Berkas jakarta_barat.pkl tidak ditemukan di folder api/")
     G = None
 
 # =====================================================================
-# ENDPOINT 1: AMBIL SEMUA DATA UMKM (Untuk MarkerCluster Leaflet.js)
+# ENDPOINT 1: AMBIL SEMUA DATA UMKM
 # =====================================================================
 @app.get("/api/umkm")
 def get_all_umkm():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # Mengubah data geometri Point menjadi format GeoJSON langsung dari database
         query = """
         SELECT id, nama_umkm, kategori_amenity, kategori_shop, latitude, longitude,
                ST_AsGeoJSON(geom)::json as geojson
@@ -68,14 +68,13 @@ def get_all_umkm():
         conn.close()
 
 # =====================================================================
-# ENDPOINT 2: RADIUS SEARCH (Menggunakan Fungsi Spasial ST_DWithin)
+# ENDPOINT 2: RADIUS SEARCH
 # =====================================================================
 @app.get("/api/radius")
 def get_umkm_in_radius(lat: float, lon: float, radius_meter: float):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # Kueri spasial andalan proyek: memfilter titik berdasarkan jarak lingkaran geografis
         query = """
         SELECT id, nama_umkm, kategori_amenity, kategori_shop, latitude, longitude,
                ST_Distance(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography) as jarak_meter
@@ -106,17 +105,17 @@ def calculate_route(
         raise HTTPException(status_code=500, detail="Sistem graf jaringan jalan tidak aktif.")
     
     try:
-        # 1. Cari node terdekat di peta berdasarkan koordinat klik User & koordinat Toko
+        # 1. Cari node terdekat berdasarkan koordinat klik
         orig_node = ox.nearest_nodes(G, X=start_lon, Y=start_lat)
         dest_node = ox.nearest_nodes(G, X=end_lon, Y=end_lat)
         
-        # 2. Eksekusi Algoritma Dijkstra untuk mencari rute dengan bobot jarak terpendek (length)
+        # 2. Eksekusi Algoritma Dijkstra
         shortest_path = nx.shortest_path(G, orig_node, dest_node, weight='length')
         
-        # 3. Konversi potongan kepingan node jalan menjadi satu garis utuh (LineString GeoJSON)
+        # 3. Konversi node jalan menjadi koordinat rute
         route_coords = []
         for node in shortest_path:
-            route_coords.append([G.nodes[node]['x'], G.nodes[node]['y']]) # [lon, lat]
+            route_coords.append([G.nodes[node]['x'], G.nodes[node]['y']])
         
         return {
             "status": "success",
