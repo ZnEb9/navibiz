@@ -4,3 +4,4 @@ psycopg2-binary==2.9.9
 networkx==3.2.1
 osmnx==1.9.1
 shapely==2.0.3
+scikit-learn

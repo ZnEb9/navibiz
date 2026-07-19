@@ -5,7 +5,7 @@ from psycopg2.extras import RealDictCursor
 import os
 import networkx as nx
 import osmnx as ox
-import pickle # Tambahkan modul pickle bawaan
+import pickle
 
 app = FastAPI(title="NaviBiz API", docs_url="/api/docs", openapi_url="/api/openapi.json")
 
@@ -25,17 +25,16 @@ def get_db_connection():
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 # =====================================================================
-# LOAD GRAPH JALAN UNTUK ROUTING (Menggunakan Biner Pickle yang Super Cepat)
+# LOAD GRAPH JALAN UNTUK ROUTING (Menggunakan Biner Pickle)
 # =====================================================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GRAPH_PKL_PATH = os.path.join(BASE_DIR, "jakarta_barat.pkl")
 
 G = None
 
-# Membaca berkas biner pickle jauh lebih cepat (< 0.2 detik), aman dari batas timeout Vercel
 if os.path.exists(GRAPH_PKL_PATH):
     try:
-        print("Loading jaringan jalan Jakarta Barat dari biner pickle...")
+        print("Loading jaringan jalan Jakarta Barat dari file lokal pickle...")
         with open(GRAPH_PKL_PATH, "rb") as f:
             G = pickle.load(f)
     except Exception as e:
@@ -125,7 +124,7 @@ def calculate_route(
                 "coordinates": route_coords
             }
         }
-    except nx.NetworkNoPath:
+    except nx.exception.NetworkNoPath: # Perbaikan modul exception NetworkX
         raise HTTPException(status_code=404, detail="Jalur transportasi tidak ditemukan antar titik tersebut.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
