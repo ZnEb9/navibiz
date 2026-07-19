@@ -62,21 +62,36 @@ export default function MapComponent({
       .catch(() => setLoading(false));
   }, []);
 
-  // Fungsi Mandiri Pemicu POST Request Perhitungan Rute Dijkstra ke Backend
+  // Fungsi Mandiri Pemicu POST Request Perhitungan Rute Dijkstra ke Backend via JSON Body
   const triggerRouteCalculation = (start, end) => {
     setLoadingRoute(true);
-    
-    // 1. KIRIM SEBAGAI QUERY PARAMETERS (Bukan JSON Body)
-    const url = `https://navibiz-x6xv.vercel.app/api/route?start_lat=${start.lat}&start_lon=${start.lng}&end_lat=${end.lat}&end_lon=${end.lng}`;
+    const url = `https://navibiz-x6xv.vercel.app/api/route`;
 
     fetch(url, {
-      method: "POST", // Tetap POST sesuai endpoint
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        start_lat: start.lat,
+        start_lon: start.lng,
+        end_lat: end.lat,
+        end_lon: end.lng
+      })
     })
-      .then((res) => res.json())
+      .then(async (res) => {
+        const isJson = res.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await res.json() : null;
+
+        if (!res.ok) {
+          const errorMsg = data?.detail || "Terjadi kegagalan internal pada server backend.";
+          throw new Error(errorMsg);
+        }
+        return data;
+      })
       .then((resData) => {
-        if (resData.status === "success" && resData.geometry) {
-          // 2. BACKEND MENGIRIM [lon, lat], LEAFLET PERLU [lat, lon]
-          // Kita harus membalik (swap) koordinatnya di sini
+        if (resData && resData.status === "success" && resData.geometry) {
+          // BACKEND MENGIRIM [lon, lat], LEAFLET PERLU [lat, lon] -> Balik koordinat di sini
           const formattedRoute = resData.geometry.coordinates.map(coord => [coord[1], coord[0]]);
           setRoutePolyline(formattedRoute);
         } else {
@@ -85,7 +100,8 @@ export default function MapComponent({
         setLoadingRoute(false);
       })
       .catch((err) => {
-        console.error("Gagal kueri optimasi rute:", err);
+        console.error("Gagal kueri optimasi rute:", err.message);
+        alert(`⚠️ Eror Proyek: ${err.message}`); 
         setLoadingRoute(false);
       });
   };

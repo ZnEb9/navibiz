@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -93,10 +93,15 @@ def get_umkm_in_radius(lat: float, lon: float, radius_meter: float):
         conn.close()
 
 # =====================================================================
-# ENDPOINT 3: RUTE NAVIGASI (Algoritma Dijkstra via NetworkX)
+# ENDPOINT 3: RUTE NAVIGASI (Algoritma Dijkstra via NetworkX - JSON Body)
 # =====================================================================
 @app.post("/api/route")
-def calculate_route(start_lat: float, start_lon: float, end_lat: float, end_lon: float):
+def calculate_route(
+    start_lat: float = Body(...), 
+    start_lon: float = Body(...), 
+    end_lat: float = Body(...), 
+    end_lon: float = Body(...)
+):
     if G is None:
         raise HTTPException(status_code=500, detail="Sistem graf jaringan jalan tidak aktif.")
     
