@@ -66,6 +66,11 @@ export default function HomePage() {
         .navibiz-overlay { display: none; }
         
         @media (max-width: 768px) {
+          /* SOLUSI: Dorong tombol +/- Leaflet ke bawah agar tidak bertabrakan dengan hamburger */
+          .leaflet-top.leaflet-left {
+            margin-top: 54px !important;
+          }
+
           .navibiz-sidebar-section {
             position: fixed !important;
             left: 0 !important;
